@@ -360,17 +360,29 @@ class gr4dofFreeEnv(LeggedRobot):
         """
         return torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) - self.cfg.rewards.max_contact_force).clip(0, 400), dim=1)
 
+    # def _reward_default_joint_pos(self):
+    #     """
+    #     Calculates the reward for keeping joint positions close to default positions, with a focus 
+    #     on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
+    #     """
+    #     joint_diff = self.dof_pos - self.default_joint_pd_target
+    #     left_yaw_roll = joint_diff[:, :2]
+    #     right_yaw_roll = joint_diff[:, 6: 8]
+    #     yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
+    #     yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
+    #     return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
+    
     def _reward_default_joint_pos(self):
         """
-        Calculates the reward for keeping joint positions close to default positions, with a focus 
-        on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
+        Calculates the reward for keeping joint positions close to default positions.
         """
+        # 计算当前关节位置与默认关节位置的差值
         joint_diff = self.dof_pos - self.default_joint_pd_target
-        left_yaw_roll = joint_diff[:, :2]
-        right_yaw_roll = joint_diff[:, 6: 8]
-        yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
-        yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
-        return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
+        # 直接计算关节位置差值的范数
+        norm = torch.norm(joint_diff, dim=1)
+        # 计算奖励值，使用指数函数使奖励值在关节位置接近默认位置时趋近于 1，远离时趋近于 0
+        # 同时减去一个与关节位置差值范数成正比的惩罚项
+        return torch.exp(-norm * 100) - 0.01 * norm
 
     def _reward_base_height(self):
         """
